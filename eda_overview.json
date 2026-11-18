@@ -1,0 +1,11 @@
+{
+  "customers": 3500,
+  "start": "2025-09-01",
+  "end": "2026-09-30",
+  "days": 395,
+  "paying_customers": 2766,
+  "cutoff": "2026-07-02",
+  "churn_customers": 1924,
+  "dormant_at_cutoff": 1576,
+  "churn_rate": 0.16476091476091476
+}

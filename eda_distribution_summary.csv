@@ -1,0 +1,8 @@
+measure,skewness,zero_share_%,median,mean,max
+sms_revenue,23.74,94.11,0.0,34.93,13250.0
+recharge_amount,8.86,16.49,4689.91,18450.46,1070000.0
+data_traffic,7.74,15.63,8.65,23620.74,1950636.67
+data_revenue,7.28,69.4,0.0,6476.44,413500.0
+voice_revenue,5.93,22.71,2400.0,6820.69,233000.0
+recharge_count,5.52,16.49,23.0,50.84,1685.0
+voice_traffic,2.76,12.71,1057.99,3850.94,52241.72

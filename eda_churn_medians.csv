@@ -1,0 +1,17 @@
+feature,stayed (0),churned (1)
+avg_daily_revenue,27.37704918032787,10.655737704918034
+revenue_30d,1000.0,0.0
+revenue_change_30d,0.0,0.0
+revenue_change_90d,0.17495626093476632,0.12484394506866417
+recharge_count_30d,4.0,0.0
+avg_recharge_amount,217.82894736842104,185.92307692307693
+median_recharge_gap,4.0,5.5
+active_days_30d,3.0,0.0
+active_day_share,0.10163934426229508,0.04262295081967213
+days_since_last_revenue,5.0,38.0
+days_since_last_recharge,5.0,35.0
+active_days_change,0.0,0.0
+recharge_count_change,0.0,0.0
+data_revenue_share,0.0,0.0
+voice_revenue_share,1.0,1.0
+tenure_days,305.0,305.0

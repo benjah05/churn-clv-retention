@@ -1,0 +1,17 @@
+feature,correlation
+active_days_30d,-0.4006050818574098
+revenue_30d,-0.3894545888693185
+recharge_count_30d,-0.35064979421375264
+active_day_share,-0.2496207074513269
+avg_daily_revenue,-0.237776313395181
+revenue_change_30d,-0.14848516239484058
+recharge_count_change,-0.14492533981140454
+active_days_change,-0.13982035855169128
+avg_recharge_amount,-0.10920233348366855
+data_revenue_share,-0.08062032601390993
+tenure_days,-0.04896499420232141
+revenue_change_90d,-0.02970106588215295
+voice_revenue_share,0.08400937525610064
+median_recharge_gap,0.11837478065853176
+days_since_last_recharge,0.36004879221605635
+days_since_last_revenue,0.41925753387456427

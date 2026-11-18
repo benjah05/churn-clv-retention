@@ -1,0 +1,24 @@
+# raw data: too large for GitHub and contains customer-level data; not needed by the app
+Project_Dataset.csv
+
+# customer-level results: private, so not in the public repository.
+# The notebook exports them; on the deployed app they are uploaded in the sidebar (Customer files).
+retention_output.csv
+customer_activity.csv
+customer_signals.csv
+churn_test.csv
+clv_test.csv
+
+# customer lists downloaded from the app
+customers_*.csv
+customer_lookup.csv
+
+# exported copies of the notebook and personal documents
+*.html
+*.pdf
+*.docx
+
+# Python and editor files
+__pycache__/
+.ipynb_checkpoints/
+.vscode/
