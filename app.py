@@ -1291,7 +1291,9 @@ def page_models():
                           for p in [0.1, 0.2, 0.3, 0.5]])
     marks["label"] = marks.apply(lambda r: f"{r['caught']:.0%} of churners", axis=1)
     with card("Gains chart: churners caught when contacting the riskiest customers first",
-              "All scored customers, ranked by churn probability. Dashed line = contacting customers at random."):
+              "Random forest, all scored customers ranked by churn probability. It shows how well the model puts "
+              "churners first; who to contact also depends on customer value (Retention priorities). "
+              "Dashed line = random order."):
         curve = alt.Chart(gains).mark_line(color=ACCENT, strokeWidth=2.5).encode(
             x=alt.X("contacted:Q", title="Share of customers contacted (riskiest first)", axis=alt.Axis(format="%")),
             y=alt.Y("caught:Q", title="Share of all churners caught", axis=alt.Axis(format="%")),
