@@ -97,6 +97,19 @@ CUSTOMER_FILES = {
     "clv_test.csv": "CLV model results on the test customers. Model performance page.",
 }
 
+# columns each customer file must contain (a file with the right name but other columns is rejected)
+REQUIRED_COLUMNS = {
+    "retention_output.csv": ["customer_id", "churn_probability", "predicted_clv", "past_6m_revenue",
+                             "risk_category", "value_category", "segment", "retention_priority",
+                             "band_churn_rate", "revenue_at_risk", "churned", "priority_rank"],
+    "customer_activity.csv": ["customer_id", "month", "revenue", "active_days", "recharges"],
+    "customer_signals.csv": ["customer_id", "revenue_30d", "revenue_60d", "active_days_30d",
+                             "recharge_count_30d", "days_since_last_revenue", "data_revenue_share",
+                             "voice_revenue_share"],
+    "churn_test.csv": ["customer_id", "churned", "logistic_regression", "random_forest"],
+    "clv_test.csv": ["customer_id", "actual", "baseline", "random_forest"],
+}
+
 # recommended action per priority: (color for st.markdown, action, reason)
 ACTIONS = {
     "Retain now": ("red", "Contact within 7 days",
@@ -141,19 +154,31 @@ st.markdown(
 
 # loading
 @st.cache_data
-def read_csv_cached(source, index_col=None):
-    """ read a CSV from a file path or from uploaded bytes """
-    if isinstance(source, bytes):
-        source = io.BytesIO(source)
-    return pd.read_csv(source, index_col=index_col)
+def read_csv_file(path, index_col=None):
+    """ read a CSV from the folder (cached, shared by all visitors: only files in the repository) """
+    return pd.read_csv(path, index_col=index_col)
+
+
+def read_uploaded(name, index_col=None):
+    """
+    read an uploaded customer file. It is parsed into this visitor's session only (st.session_state),
+    not into the shared cache, so it disappears when the session ends.
+    """
+    content = st.session_state.get("uploads", {}).get(name)
+    if content is None:
+        return None
+    parsed = st.session_state.setdefault("upload_frames", {})
+    key = (name, index_col, hash(content))
+    if key not in parsed:
+        parsed[key] = pd.read_csv(io.BytesIO(content), index_col=index_col)
+    return parsed[key].copy()
 
 
 def load_optional(path, index_col=None):
     """ read a results file from the folder or from the uploads, or return None if it is not available """
     if Path(path).exists():
-        return read_csv_cached(path, index_col)
-    uploaded = st.session_state.get("uploads", {}).get(path)
-    return read_csv_cached(uploaded, index_col) if uploaded is not None else None
+        return read_csv_file(path, index_col)
+    return read_uploaded(path, index_col)
 
 
 def load_retention():
@@ -360,6 +385,22 @@ def need_files(names):
     return False
 
 
+def check_upload(name, content, accepted):
+    """ why an uploaded file is refused, or None when it is accepted """
+    if name not in CUSTOMER_FILES:
+        return "not one of the expected files below. Keep the original file names."
+    if name in accepted:
+        return "duplicate. This file is already uploaded, so the extra copy is ignored."
+    try:
+        columns = set(pd.read_csv(io.BytesIO(content), nrows=5).columns)
+    except Exception:
+        return "the file could not be read as a CSV."
+    missing_columns = [c for c in REQUIRED_COLUMNS[name] if c not in columns]
+    if missing_columns:
+        return f"it is missing expected columns ({', '.join(missing_columns[:4])}). Upload the file exported by the notebook."
+    return None
+
+
 def customer_upload_box():
     """
     sidebar upload for the customer-level files. Shown only when some are not in the folder
@@ -368,18 +409,23 @@ def customer_upload_box():
     missing = [n for n in CUSTOMER_FILES if not Path(n).exists()]
     if not missing:
         return
-    uploads = st.session_state.setdefault("uploads", {})
     with st.sidebar.expander("Customer files", icon=":material/upload_file:",
-                             expanded=any(n not in uploads for n in missing)):
-        st.caption("Upload these files exported by the notebook. They are private, used for this session "
-                   "only and not stored online.")
+                             expanded=any(n not in st.session_state.get("uploads", {}) for n in missing)):
+        st.caption("Upload these files exported by the notebook. They are private, kept in memory for this "
+                   "session only and not saved anywhere. Remove a file with its × to replace it.")
         files = st.file_uploader("Customer files", type="csv", accept_multiple_files=True,
                                  key="customer_upload", label_visibility="collapsed")
+
+        # rebuilt from the files currently in the upload box, so removing a file also removes its data
+        uploads = {}
         for f in files or []:
-            if f.name in CUSTOMER_FILES:
-                uploads[f.name] = f.getvalue()
+            problem = check_upload(f.name, f.getvalue(), uploads)
+            if problem:
+                st.error(f"`{f.name}` not accepted: {problem}", icon=":material/block:")
             else:
-                st.warning(f"{f.name} is not one of the files below. Keep the original file names.")
+                uploads[f.name] = f.getvalue()
+        st.session_state["uploads"] = uploads
+
         for name in missing:
             mark = ":green[:material/check_circle:]" if name in uploads else ":red[:material/cancel:]"
             st.markdown(f"{mark} `{name}`")
@@ -1234,6 +1280,38 @@ def page_models():
         caught = tp / (tp + fn) if tp + fn else 0
         takeaway(f"At this threshold the model catches {caught:.0%} of churners but also flags {fp} customers who "
                  "stayed. A lower threshold catches more churners at the cost of more wasted contacts.")
+
+    # gains chart: share of churners caught when contacting the riskiest customers first
+    ranked = data.sort_values("churn_probability", ascending=False)
+    gains = pd.DataFrame({
+        "contacted": (pd.Series(range(1, len(ranked) + 1)) / len(ranked)).to_numpy(),
+        "caught": (ranked["churned"].cumsum() / ranked["churned"].sum()).to_numpy(),
+    })
+    marks = pd.DataFrame([{"contacted": p, "caught": gains["caught"].iloc[int(round(len(gains) * p)) - 1]}
+                          for p in [0.1, 0.2, 0.3, 0.5]])
+    marks["label"] = marks.apply(lambda r: f"{r['caught']:.0%} of churners", axis=1)
+    with card("Gains chart: churners caught when contacting the riskiest customers first",
+              "All scored customers, ranked by churn probability. Dashed line = contacting customers at random."):
+        curve = alt.Chart(gains).mark_line(color=ACCENT, strokeWidth=2.5).encode(
+            x=alt.X("contacted:Q", title="Share of customers contacted (riskiest first)", axis=alt.Axis(format="%")),
+            y=alt.Y("caught:Q", title="Share of all churners caught", axis=alt.Axis(format="%")),
+            tooltip=[alt.Tooltip("contacted:Q", format=".0%"), alt.Tooltip("caught:Q", format=".0%")])
+        random_line = alt.Chart(pd.DataFrame({"contacted": [0, 1], "caught": [0, 1]})).mark_line(
+            strokeDash=[4, 4], color="gray").encode(x="contacted:Q", y="caught:Q")
+        points = alt.Chart(marks).mark_circle(size=70, color=ACCENT).encode(x="contacted:Q", y="caught:Q")
+        labels = points.mark_text(align="left", dx=8, dy=10, color=ACCENT).encode(text="label:N")
+        show((curve + random_line + points + labels).properties(height=320))
+        top20 = marks.loc[marks["contacted"] == 0.2, "caught"].iloc[0]
+        takeaway(f"Contacting the riskiest 20% of customers catches {top20:.0%} of all churners, "
+                 f"{top20 / 0.2:.1f} times the 20% that random contact would catch.")
+    with notes("What this chart means"):
+        st.markdown(
+            "- Customers are sorted from highest to lowest churn probability. Moving right means contacting more "
+            "of them, starting with the riskiest; the line shows how many of the real churners have been reached.\n"
+            "- Contacting customers at random follows the dashed line: 20% of customers reaches about 20% of "
+            "churners. The further the blue line rises above it, the better the model puts churners first.\n"
+            "- It answers a budget question: if the business can only contact a small share of customers, the "
+            "model shows how many likely churners that share will reach.")
 
     # calibration
     st.subheader("Calibration: turning scores into real probabilities")
